@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-const INPUT: &'static [&str] = &[
+const PART_1_INPUT: &'static [&str] = &[
     "rvefnvyxzbodgpnpkumawhijsc",
     "rvefqtyxzsddglnppumawhijsc",
     "rvefqtywzbodglnkkubawhijsc",
@@ -283,6 +283,33 @@ fn count_two_and_three_char_frequencies(words: &[&str]) -> (u32, u32) {
     (exactly_two, exactly_three)
 }
 
+fn count_different_chars(a: &str, b: &str) -> u32 {
+    let different = a.len() as u32;
+
+    a.chars().zip(b.chars()).fold(
+        different,
+        |acc, (a_char, b_char)| {
+            if a_char == b_char {
+                acc - 1
+            } else {
+                acc
+            }
+        },
+    )
+}
+
+fn differ_by<'a>(words: &[&'a str], num: u32) -> Option<(&'a str, &'a str)> {
+    for (_, a) in words.iter().enumerate() {
+        for (_, b) in words.iter().enumerate() {
+            if count_different_chars(a, b) == num {
+                return Some((a, b));
+            }
+        }
+    }
+
+    return None;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,13 +338,32 @@ mod tests {
         assert_eq!(three, 2);
     }
 
+    #[test]
+    fn get_num_different_chars() {
+        assert_eq!(count_different_chars("abcde", "axcye"), 2);
+        assert_eq!(count_different_chars("fghij", "fguij"), 1);
+    }
+
+    #[test]
+    fn find_words_with_one_different_char() {
+        let input = &[
+            "abcde", "fghij", "klmno", "pqrst", "fguij", "axcye", "wvxyz",
+        ];
+
+        assert_eq!(differ_by(input, 1).unwrap(), ("fghij", "fguij"));
+        assert_eq!(differ_by(input, 2).unwrap(), ("abcde", "axcye"));
+    }
 }
 
 fn main() {
-    let (exactly_two, exactly_three) = count_two_and_three_char_frequencies(INPUT);
+    let (exactly_two, exactly_three) = count_two_and_three_char_frequencies(PART_1_INPUT);
 
-    println!(
-        "exactly_two={}, exactly_three={}",
-        exactly_two, exactly_three,
-    );
+    // Part 1
+    println!("Part 1 - result={}", exactly_two * exactly_three);
+
+    // Part 2
+    match differ_by(PART_1_INPUT, 1) {
+        None => println!("nothing found!"),
+        Some((word_a, word_b)) => println!("word_a={}, word_b={}", word_a, word_b),
+    }
 }
