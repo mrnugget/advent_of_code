@@ -253,38 +253,68 @@ const INPUT: &'static [&str] = &[
     "rvxfqtyxzbtdglnpkbmawhijsc",
 ];
 
-fn main() {
+fn character_frequencies(word: &str) -> HashMap<char, u32> {
+    let mut frequencies = HashMap::new();
+
+    for (_, c) in word.chars().enumerate() {
+        let frequency = frequencies.entry(c).or_insert(0);
+        *frequency += 1;
+    }
+
+    frequencies
+}
+
+fn count_two_and_three_char_frequencies(words: &[&str]) -> (u32, u32) {
     let mut exactly_two = 0;
     let mut exactly_three = 0;
 
-    for (_, item) in INPUT.iter().enumerate() {
-        let mut frequencies = HashMap::new();
+    for (_, item) in words.iter().enumerate() {
+        let mut frequencies = character_frequencies(item);
 
-        for (_, c) in item.chars().enumerate() {
-            let frequency = frequencies.entry(c).or_insert(0);
-            *frequency += 1;
-        }
-
-        let mut has_exactly_two = false;
-        let mut has_exactly_three = false;
-
-        for (_, &frequency) in frequencies.iter() {
-            if frequency == 2 {
-                has_exactly_two = true;
-            }
-            if frequency == 3 {
-                has_exactly_three = true;
-            }
-        }
-
-        if has_exactly_two {
+        if frequencies.values().any(|&x| x == 2) {
             exactly_two += 1;
         }
 
-        if has_exactly_three {
+        if frequencies.values().any(|&x| x == 3) {
             exactly_three += 1;
         }
     }
+
+    (exactly_two, exactly_three)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn getting_character_frequencies() {
+        let input = "abbcccdddd";
+
+        let mut expected = HashMap::new();
+        expected.insert('a', 1);
+        expected.insert('b', 2);
+        expected.insert('c', 3);
+        expected.insert('d', 4);
+
+        let frequencies = character_frequencies(input);
+
+        assert_eq!(frequencies, expected);
+    }
+
+    #[test]
+    fn get_num_words_with_two_and_three_char_frequencies() {
+        let input = &["aaXXXXXX", "bXXXXXXX", "cccXXXXX", "dddXXXXX"];
+
+        let (two, three) = count_two_and_three_char_frequencies(input);
+        assert_eq!(two, 1);
+        assert_eq!(three, 2);
+    }
+
+}
+
+fn main() {
+    let (exactly_two, exactly_three) = count_two_and_three_char_frequencies(INPUT);
 
     println!(
         "exactly_two={}, exactly_three={}",
