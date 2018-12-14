@@ -85,11 +85,8 @@ mod test {
         // .111133.
         // ........
         let claim_1 = Claim::new("#1 @ 1,3: 4x4");
-        println!("claim_1 = {:?}", claim_1);
         let claim_2 = Claim::new("#2 @ 3,1: 4x4");
-        println!("claim_2 = {:?}", claim_2);
         let claim_3 = Claim::new("#3 @ 5,5: 2x2");
-        println!("claim_3 = {:?}", claim_1);
 
         let mut expected = Canvas::new();
         expected.insert((1, 3), 1);
@@ -131,15 +128,45 @@ mod test {
         expected.insert((6, 6), 1);
 
         let mut canvas = Canvas::new();
-        println!("claim_1 drawing");
         claim_1.draw_on(&mut canvas);
-        println!("claim_2 drawing");
         claim_2.draw_on(&mut canvas);
-        println!("claim_3 drawing");
         claim_3.draw_on(&mut canvas);
 
         assert_eq!(canvas, expected);
     }
+
+    #[test]
+    fn claim_get_values() {
+        // ........
+        // ...2222.
+        // ...2222.
+        // .11XX22.
+        // .11XX22.
+        // .111133.
+        // .111133.
+        // ........
+        let claim_1 = Claim::new("#1 @ 1,3: 4x4");
+        let claim_2 = Claim::new("#2 @ 3,1: 4x4");
+        let claim_3 = Claim::new("#3 @ 5,5: 2x2");
+
+        let mut canvas = Canvas::new();
+        claim_1.draw_on(&mut canvas);
+        claim_2.draw_on(&mut canvas);
+        claim_3.draw_on(&mut canvas);
+
+        let claim_1_values = canvas.values_for_claim(claim_1);
+        assert_eq!(claim_1_values.filter(|v| **v == 1).count(), 12);
+        assert_eq!(claim_1_values.filter(|v| **v == 2).count(), 4);
+
+        let claim_2_values = canvas.values_for_claim(claim_2);
+        assert_eq!(claim_2_values.filter(|v| **v == 1).count(), 12);
+        assert_eq!(claim_2_values.filter(|v| **v == 2).count(), 4);
+
+        let claim_3_values = canvas.values_for_claim(claim_3);
+        assert_eq!(claim_3_values.filter(|v| **v == 1).count(), 4);
+        assert_eq!(claim_3_values.filter(|v| **v == 2).count(), 0);
+    }
+
 }
 
 fn main() -> Result<(), std::io::Error> {
@@ -151,9 +178,7 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     let filename = args[1].clone();
-
     let mut f = File::open(filename)?;
-
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
@@ -164,9 +189,8 @@ fn main() -> Result<(), std::io::Error> {
         claim.draw_on(&mut canvas);
     }
 
-    println!("canvas={:?}", canvas);
-
     let over_two = canvas.values().filter(|v| **v > 1).count();
-    println!("over_two={}", over_two);
+    println!("part 1 ={}", over_two);
+
     Ok(())
 }
