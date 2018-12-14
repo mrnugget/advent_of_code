@@ -3,6 +3,8 @@ extern crate regex;
 use regex::Regex;
 use std::collections::HashMap;
 use std::env;
+use std::fs::File;
+use std::io::prelude::*;
 use std::process;
 
 type Point = (u32, u32);
@@ -19,7 +21,7 @@ struct Claim {
 
 impl Claim {
     pub fn new(claim_def: &str) -> Claim {
-        let re = Regex::new(r"#(\d+)\s@\s(\d),(\d):\s(\d)x(\d)").unwrap();
+        let re = Regex::new(r"#(\d+)\s@\s(\d+),(\d+):\s(\d+)x(\d+)").unwrap();
         let caps = re.captures(claim_def).unwrap();
 
         let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
@@ -40,7 +42,6 @@ impl Claim {
     pub fn draw_on(&self, canvas: &mut Canvas) {
         for row in self.start_row..(self.start_row + self.height) {
             for col in self.start_column..(self.start_column + self.width) {
-                println!("drawing {:?}", (row, col));
                 let cell = canvas.entry((row, col)).or_insert(0);
                 *cell += 1;
             }
@@ -62,6 +63,15 @@ mod test {
         assert_eq!(claim.start_column, 3);
         assert_eq!(claim.width, 5);
         assert_eq!(claim.height, 4);
+
+        let input_2 = "#1353 @ 370,944: 26x15";
+        let claim_2 = Claim::new(input_2);
+
+        assert_eq!(claim_2.id, 1353);
+        assert_eq!(claim_2.start_row, 944);
+        assert_eq!(claim_2.start_column, 370);
+        assert_eq!(claim_2.width, 26);
+        assert_eq!(claim_2.height, 15);
     }
 
     #[test]
@@ -132,7 +142,7 @@ mod test {
     }
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
@@ -142,9 +152,19 @@ fn main() {
 
     let filename = args[1].clone();
 
+    let mut f = File::open(filename)?;
+
+    let mut contents = String::new();
+    f.read_to_string(&mut contents)?;
+
     let mut canvas = Canvas::new();
 
-    let input = "#123 @ 3,2: 5x4";
-    let claim = Claim::new(input);
-    claim.draw_on(&mut canvas);
+    for line in contents.lines() {
+        let claim = Claim::new(line);
+        claim.draw_on(&mut canvas);
+    }
+
+    println!("canvas={:?}", canvas);
+
+    Ok(())
 }
