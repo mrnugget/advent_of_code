@@ -166,5 +166,7 @@ fn main() -> Result<(), std::io::Error> {
 
     println!("canvas={:?}", canvas);
 
+    let over_two = canvas.values().filter(|v| **v > 1).count();
+    println!("over_two={}", over_two);
     Ok(())
 }
