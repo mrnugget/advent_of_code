@@ -47,6 +47,20 @@ impl Claim {
             }
         }
     }
+
+    pub fn values_on_canvas(&self, canvas: &Canvas) -> Vec<u32> {
+        let mut values = Vec::new();
+
+        for row in self.start_row..(self.start_row + self.height) {
+            for col in self.start_column..(self.start_column + self.width) {
+                if let Some(value) = canvas.get(&(row, col)) {
+                    values.push(*value);
+                }
+            }
+        }
+
+        values
+    }
 }
 
 #[cfg(test)]
@@ -154,17 +168,17 @@ mod test {
         claim_2.draw_on(&mut canvas);
         claim_3.draw_on(&mut canvas);
 
-        let claim_1_values = canvas.values_for_claim(claim_1);
-        assert_eq!(claim_1_values.filter(|v| **v == 1).count(), 12);
-        assert_eq!(claim_1_values.filter(|v| **v == 2).count(), 4);
+        let claim_1_values = claim_1.values_on_canvas(&canvas);
+        assert_eq!(claim_1_values.iter().filter(|v| **v == 1).count(), 12);
+        assert_eq!(claim_1_values.iter().filter(|v| **v == 2).count(), 4);
 
-        let claim_2_values = canvas.values_for_claim(claim_2);
-        assert_eq!(claim_2_values.filter(|v| **v == 1).count(), 12);
-        assert_eq!(claim_2_values.filter(|v| **v == 2).count(), 4);
+        let claim_2_values = claim_2.values_on_canvas(&canvas);
+        assert_eq!(claim_2_values.iter().filter(|v| **v == 1).count(), 12);
+        assert_eq!(claim_2_values.iter().filter(|v| **v == 2).count(), 4);
 
-        let claim_3_values = canvas.values_for_claim(claim_3);
-        assert_eq!(claim_3_values.filter(|v| **v == 1).count(), 4);
-        assert_eq!(claim_3_values.filter(|v| **v == 2).count(), 0);
+        let claim_3_values = claim_3.values_on_canvas(&canvas);
+        assert_eq!(claim_3_values.iter().filter(|v| **v == 1).count(), 4);
+        assert_eq!(claim_3_values.iter().filter(|v| **v == 2).count(), 0);
     }
 
 }
@@ -184,13 +198,22 @@ fn main() -> Result<(), std::io::Error> {
 
     let mut canvas = Canvas::new();
 
+    let mut claims = Vec::new();
     for line in contents.lines() {
         let claim = Claim::new(line);
         claim.draw_on(&mut canvas);
+        claims.push(claim);
     }
 
     let over_two = canvas.values().filter(|v| **v > 1).count();
-    println!("part 1 ={}", over_two);
+    println!("part 1 = {}", over_two);
+
+    for claim in claims {
+        let values = claim.values_on_canvas(&canvas);
+        if values.iter().filter(|v| **v > 1).count() == 0 {
+            println!("part 2 = {}", claim.id);
+        }
+    }
 
     Ok(())
 }
