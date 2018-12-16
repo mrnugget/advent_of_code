@@ -17,6 +17,13 @@ struct Guard {
 }
 
 impl Guard {
+    fn new(id: u32) -> Guard {
+        Guard {
+            id: id,
+            minutes_asleep: [0; 60],
+        }
+    }
+
     fn sum_minutes_asleep(&self) -> u32 {
         self.minutes_asleep.iter().fold(0, |a, &b| a + b)
     }
@@ -98,27 +105,22 @@ where
 fn logs_to_guards(logs: Vec<Log>) -> HashMap<u32, Guard> {
     let mut guards = HashMap::new();
 
-    let mut current_guard: Option<u32> = None;
-    let mut sleep_start: Option<usize> = None;
+    let mut current_id = 0;
+    let mut sleep_start = 0;
 
     for (_, log) in logs.iter().enumerate() {
         match log.log_type {
-            LogType::ShiftStart(guard_id) => {
-                guards.entry(guard_id).or_insert_with(|| Guard {
-                    id: guard_id,
-                    minutes_asleep: [0; 60],
-                });
-                current_guard = Some(guard_id);
+            LogType::ShiftStart(id) => {
+                guards.entry(id).or_insert_with(|| Guard::new(id));
+                current_id = id;
             }
             LogType::SleepStart => {
-                sleep_start = Some(log.time.minute() as usize);
+                sleep_start = log.time.minute() as usize;
             }
             LogType::SleepEnd => {
                 let sleep_end = log.time.minute() as usize;
-                let sleep_start = sleep_start.unwrap();
 
-                let id = current_guard.unwrap();
-                let mut guard = guards.get_mut(&id).unwrap();
+                let mut guard = guards.get_mut(&current_id).unwrap();
 
                 for minute in sleep_start..sleep_end {
                     guard.minutes_asleep[minute] += 1;
