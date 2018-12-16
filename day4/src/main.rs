@@ -63,6 +63,7 @@ fn parse_log_line(line: &str) -> Option<Log> {
             Regex::new(r"\[(\d+)-(\d+)-(\d+)\s(\d+):(\d+)\]\s(.*)").unwrap();
         static ref SHIFT_START_RE: Regex = Regex::new(r"Guard #(\d+) begins shift").unwrap();
     }
+
     let caps = LINE_RE.captures(line)?;
 
     let year = caps.get(1)?.as_str().parse::<i32>().unwrap();
