@@ -5,6 +5,7 @@ extern crate regex;
 
 use chrono::prelude::*;
 use regex::Regex;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -13,6 +14,24 @@ use std::process;
 struct Guard {
     id: u32,
     minutes_asleep: [u32; 60],
+}
+
+impl Guard {
+    fn sum_minutes_asleep(&self) -> u32 {
+        self.minutes_asleep.iter().fold(0, |a, &b| a + b)
+    }
+
+    fn sleepiest_minute(&self) -> usize {
+        let mut i = 0;
+
+        for (j, &value) in self.minutes_asleep.iter().enumerate() {
+            if value > self.minutes_asleep[i] {
+                i = j;
+            }
+        }
+
+        i
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -72,6 +91,41 @@ where
     parsed
 }
 
+fn logs_to_guards(logs: Vec<Log>) -> HashMap<u32, Guard> {
+    let mut guards = HashMap::new();
+
+    let mut current_guard: Option<u32> = None;
+    let mut sleep_start: Option<usize> = None;
+
+    for (_, log) in logs.iter().enumerate() {
+        match log.log_type {
+            LogType::ShiftStart(guard_id) => {
+                guards.entry(guard_id).or_insert_with(|| Guard {
+                    id: guard_id,
+                    minutes_asleep: [0; 60],
+                });
+                current_guard = Some(guard_id);
+            }
+            LogType::SleepStart => {
+                sleep_start = Some(log.time.minute() as usize);
+            }
+            LogType::SleepEnd => {
+                let sleep_end = log.time.minute() as usize;
+                let sleep_start = sleep_start.unwrap();
+
+                let id = current_guard.unwrap();
+                let mut guard = guards.get_mut(&id).unwrap();
+
+                for minute in sleep_start..sleep_end {
+                    guard.minutes_asleep[minute] += 1;
+                }
+            }
+        }
+    }
+
+    guards
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,7 +170,7 @@ mod tests {
     }
 
     #[test]
-    fn logs_to_guards() {
+    fn converting_logs_to_guards() {
         let lines = vec![
             "[1518-03-27 00:03] Guard #2251 begins shift",
             "[1518-03-27 00:11] falls asleep",
@@ -131,10 +185,35 @@ mod tests {
             "[1518-03-29 00:10] wakes up",
             "[1518-03-29 00:20] falls asleep",
             "[1518-03-29 00:55] wakes up",
+            "[1518-03-30 00:30] Guard #2251 begins shift",
+            "[1518-03-30 00:40] falls asleep",
+            "[1518-03-30 00:55] wakes up",
         ];
 
         let logs = parse_logs(lines);
-        assert_eq!(logs.len(), 13);
+        assert_eq!(logs.len(), 16);
+
+        let guards = logs_to_guards(logs);
+        let guard_1 = guards.get(&2251).unwrap();
+        assert!(guard_1.minutes_asleep[0..10].iter().all(|m| *m == 0));
+        assert!(guard_1.minutes_asleep[11..39].iter().all(|m| *m == 1));
+        assert!(guard_1.minutes_asleep[40..55].iter().all(|m| *m == 2));
+        assert!(guard_1.minutes_asleep[56..57].iter().all(|m| *m == 1));
+        assert!(guard_1.minutes_asleep[58..59].iter().all(|m| *m == 0));
+
+        let guard_2 = guards.get(&3319).unwrap();
+        assert!(guard_2.minutes_asleep[0..15].iter().all(|m| *m == 0));
+        assert!(guard_2.minutes_asleep[16..33].iter().all(|m| *m == 1));
+        assert!(guard_2.minutes_asleep[34..52].iter().all(|m| *m == 0));
+        assert!(guard_2.minutes_asleep[53..54].iter().all(|m| *m == 1));
+        assert!(guard_2.minutes_asleep[55..59].iter().all(|m| *m == 0));
+
+        let guard_3 = guards.get(&1777).unwrap();
+        assert!(guard_3.minutes_asleep[0..7].iter().all(|m| *m == 0));
+        assert!(guard_3.minutes_asleep[08..10].iter().all(|m| *m == 1));
+        assert!(guard_3.minutes_asleep[11..19].iter().all(|m| *m == 0));
+        assert!(guard_3.minutes_asleep[20..55].iter().all(|m| *m == 1));
+        assert!(guard_3.minutes_asleep[56..59].iter().all(|m| *m == 0));
     }
 }
 
@@ -153,5 +232,27 @@ fn main() -> Result<(), std::io::Error> {
 
     let logs = parse_logs(contents.lines());
 
+    let mut guards = logs_to_guards(logs)
+        .into_iter()
+        .fold(Vec::new(), |mut acc, kv| {
+            let (_, guard) = kv;
+            acc.push(guard);
+            acc
+        });
+    guards.sort_unstable_by_key(|g| g.sum_minutes_asleep());
+
+    let slept_the_most = guards.last().unwrap();
+    println!(
+        "guard {} slept the most with {} minutes",
+        slept_the_most.id,
+        slept_the_most.sum_minutes_asleep()
+    );
+
+    println!(
+        "sleepiest minute for guard {} was minute {}. result for part 1: {}",
+        slept_the_most.id,
+        slept_the_most.sleepiest_minute(),
+        slept_the_most.id * slept_the_most.sleepiest_minute() as u32
+    );
     Ok(())
 }
