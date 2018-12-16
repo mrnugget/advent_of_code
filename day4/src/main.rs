@@ -32,6 +32,10 @@ impl Guard {
 
         i
     }
+
+    fn highest_sleep(&self) -> u32 {
+        *self.minutes_asleep.iter().max_by_key(|x| *x).unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -239,8 +243,16 @@ fn main() -> Result<(), std::io::Error> {
             acc.push(guard);
             acc
         });
-    guards.sort_unstable_by_key(|g| g.sum_minutes_asleep());
 
+    for (_, guard) in guards.iter().enumerate() {
+        println!(
+            "guard #{}.\tminutes_asleep: {:?}",
+            guard.id,
+            &guard.minutes_asleep[..]
+        );
+    }
+
+    guards.sort_unstable_by_key(|g| g.sum_minutes_asleep());
     let slept_the_most = guards.last().unwrap();
     println!(
         "guard {} slept the most with {} minutes",
@@ -253,6 +265,17 @@ fn main() -> Result<(), std::io::Error> {
         slept_the_most.id,
         slept_the_most.sleepiest_minute(),
         slept_the_most.id * slept_the_most.sleepiest_minute() as u32
+    );
+
+    guards.sort_unstable_by_key(|g| g.highest_sleep());
+    let has_sleepiest_minute = guards.last().unwrap();
+
+    println!(
+        "guard {} has sleepiest minute {} with {} overlaps. result for part 2: {}",
+        has_sleepiest_minute.id,
+        has_sleepiest_minute.sleepiest_minute(),
+        has_sleepiest_minute.highest_sleep(),
+        has_sleepiest_minute.id * has_sleepiest_minute.sleepiest_minute() as u32
     );
     Ok(())
 }
