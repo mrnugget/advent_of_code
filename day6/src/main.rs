@@ -97,6 +97,25 @@ impl Grid {
 
         (max_index, max_area)
     }
+
+    fn biggest_region(&self) -> i32 {
+        let max_dist = 10000;
+        let mut region_size = 0;
+
+        for x in 0..=self.width {
+            for y in 0..=self.height {
+                let mut local_dist = 0;
+                for c in self.coords.iter() {
+                    local_dist += c.distance(x, y)
+                }
+                if local_dist < max_dist {
+                    region_size += 1;
+                }
+            }
+        }
+
+        region_size
+    }
 }
 
 #[cfg(test)]
@@ -173,10 +192,15 @@ fn main() -> Result<(), std::io::Error> {
     // Part 1
     let grid = Grid::new(coords);
     let (coord_idx, area_sum) = grid.biggest_area();
+
     println!(
         "coordinate {} has the biggest area with {}",
         coord_idx, area_sum,
     );
+
+    // Part 2
+    let biggest_region_size = grid.biggest_region();
+    println!("the size of the biggest region is {}", biggest_region_size);
 
     Ok(())
 }
