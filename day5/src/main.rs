@@ -75,7 +75,6 @@ fn main() -> Result<(), std::io::Error> {
         let unit2 = unit1.to_uppercase().into_iter().next().unwrap();
 
         let mut filtered = units
-            .clone()
             .iter()
             .filter(|&&u| u != unit1 && u != unit2)
             .cloned()
