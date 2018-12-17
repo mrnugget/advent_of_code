@@ -61,10 +61,34 @@ fn main() -> Result<(), std::io::Error> {
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    let mut units: Vec<char> = contents.chars().filter(|x| *x != '\n').collect();
+    let mut units: Vec<char> = contents.chars().collect();
+    units.pop(); // Remove `\n`
     react_all(&mut units);
 
-    println!("units left: {}", units.len());
+    println!("part 1 - units left: {}", units.len());
+
+    println!("part 2");
+
+    let mut shortest = units.len();
+    for c in b'a'..=b'z' {
+        let unit1 = c as char;
+        let unit2 = unit1.to_uppercase().into_iter().next().unwrap();
+
+        let mut filtered = units
+            .clone()
+            .iter()
+            .filter(|&&u| u != unit1 && u != unit2)
+            .cloned()
+            .collect();
+
+        react_all(&mut filtered);
+
+        let len = filtered.len();
+        if len < shortest {
+            shortest = len;
+        }
+    }
+    println!("shortest: {}", shortest);
 
     Ok(())
 }
