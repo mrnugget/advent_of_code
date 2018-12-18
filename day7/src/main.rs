@@ -49,7 +49,8 @@ fn build_order(graph: HashMap<&str, Vec<&str>>) -> String {
     let mut satisfied: HashSet<&str> = HashSet::new();
 
     while !steps.is_empty() {
-        if let Some(&step) = get_next_steps(&steps, &graph, &satisfied).first() {
+        let next = get_next_steps(&steps, &graph, &satisfied);
+        if let Some(&step) = next.first() {
             satisfied.insert(step);
             result.push(step);
             steps.remove(step);
@@ -115,6 +116,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let graph = build_graph(contents.lines());
     let part_1 = build_order(graph);
+    assert_eq!(part_1, "BCEFLDMQTXHZGKIASVJYORPUWN");
     println!("part_1={}", part_1);
     Ok(())
 }
