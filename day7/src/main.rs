@@ -60,6 +60,55 @@ fn build_order(graph: HashMap<&str, Vec<&str>>) -> String {
     result.into_iter().collect::<String>()
 }
 
+#[derive(Debug)]
+struct Worker<'a> {
+    work_left: u32,
+    step: Option<&'a str>,
+}
+
+fn step_duration(step: &str) -> u32 {
+    step.chars().next().unwrap() as u32 - ('A' as u32) + 1
+}
+
+fn work_off_steps(graph: HashMap<&str, Vec<&str>>, num_workers: i32, base_duration: u32) -> i32 {
+    let mut steps: HashSet<&str> = graph.keys().cloned().collect();
+    let steps_len = steps.len();
+    let mut worked_off: HashSet<&str> = HashSet::new();
+
+    let mut workers = Vec::new();
+    for _ in 0..num_workers {
+        workers.push(Worker {
+            work_left: 0,
+            step: None,
+        });
+    }
+
+    let mut duration = 0;
+
+    while !steps.is_empty() || worked_off.len() != steps_len {
+        let next = get_next_steps(&steps, &graph, &worked_off);
+
+        for (worker, step) in workers.iter_mut().filter(|w| w.step == None).zip(next) {
+            worker.work_left = base_duration + step_duration(step);
+            worker.step = Some(step);
+
+            steps.remove(step);
+        }
+
+        for w in workers.iter_mut().filter(|w| w.step != None) {
+            w.work_left -= 1;
+            if w.work_left == 0 {
+                worked_off.insert(w.step.unwrap());
+                w.step = None;
+            }
+        }
+
+        duration += 1;
+    }
+
+    duration
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,7 +149,17 @@ mod tests {
 
         assert_eq!(order, "CABDFE");
     }
+
+    #[test]
+    fn test_working_off_the_steps() {
+        let input = test_input();
+        let graph = build_graph(input.into_iter());
+        let num_workers = 2;
+        let total_duration = work_off_steps(graph.clone(), num_workers, 0);
+        assert_eq!(total_duration, 15);
+    }
 }
+
 fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
 
@@ -115,8 +174,12 @@ fn main() -> Result<(), std::io::Error> {
     f.read_to_string(&mut contents)?;
 
     let graph = build_graph(contents.lines());
-    let part_1 = build_order(graph);
+    let part_1 = build_order(graph.clone());
     assert_eq!(part_1, "BCEFLDMQTXHZGKIASVJYORPUWN");
     println!("part_1={}", part_1);
+
+    let part_2 = work_off_steps(graph.clone(), 5, 60);
+    assert_eq!(part_2, 987);
+    println!("part_2={}", part_2);
     Ok(())
 }
