@@ -34,25 +34,24 @@ fn calculate_high_score(num_players: u32, last_marble: u32) -> u32 {
         next: 0,
         prev: 0,
     }];
-    let mut current_marble_id = 0;
+    let mut current = 0;
 
     for marble in 1..=last_marble {
         if marble % 23 == 0 {
             let mut i = 7;
             while i > 0 {
-                current_marble_id = marbles[current_marble_id].prev;
+                current = marbles[current].prev;
                 i -= 1;
             }
-            players[current_player] += marbles[current_marble_id].value;
-            players[current_player] += marble;
+            players[current_player] += marble + marbles[current].value;
 
-            let prev_id = marbles[current_marble_id].prev;
-            let next_id = marbles[current_marble_id].next;
+            let prev_id = marbles[current].prev;
+            let next_id = marbles[current].next;
             marbles[prev_id].next = next_id;
             marbles[next_id].prev = prev_id;
-            current_marble_id = next_id;
+            current = next_id;
         } else {
-            let left_id = marbles[current_marble_id].next;
+            let left_id = marbles[current].next;
             let right_id = marbles[left_id].next;
 
             let new = Marble {
@@ -63,14 +62,13 @@ fn calculate_high_score(num_players: u32, last_marble: u32) -> u32 {
             };
             marbles[left_id].next = new.id;
             marbles[right_id].prev = new.id;
-            current_marble_id = new.id;
+            current = new.id;
             marbles.push(new);
         }
 
         current_player = (current_player + 1) % num_players as usize;
     }
 
-    // println!("players={:?}", players);
     *players.iter().max().unwrap()
 }
 
