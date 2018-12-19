@@ -115,6 +115,8 @@ fn main() -> Result<(), std::io::Error> {
     let root = build_graph(&mut iter);
     let metadata_sum = sum_metadata(&root);
     println!("metadata_sum={}", metadata_sum);
+    // Correct result
+    assert_eq!(metadata_sum, 42798);
 
     Ok(())
 }
