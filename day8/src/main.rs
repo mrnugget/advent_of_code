@@ -47,6 +47,23 @@ fn sum_metadata(n: &Node) -> u32 {
     sum
 }
 
+fn value_of_node(n: &Node) -> u32 {
+    if n.children.is_empty() {
+        return n.metadata.iter().sum();
+    }
+
+    let mut value: u32 = 0;
+
+    for &meta in n.metadata.iter() {
+        let i = meta - 1;
+        if let Some(child) = n.children.get(i as usize) {
+            value += value_of_node(child);
+        }
+    }
+
+    value
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,6 +110,15 @@ mod tests {
         assert_eq!(sum, 138);
     }
 
+    #[test]
+    fn calculating_value_of_node() {
+        let input = parse_input(test_input());
+        let mut iter = input.iter();
+        let root = build_graph(&mut iter);
+
+        let value = value_of_node(&root);
+        assert_eq!(value, 66);
+    }
 }
 
 fn main() -> Result<(), std::io::Error> {
@@ -108,15 +134,21 @@ fn main() -> Result<(), std::io::Error> {
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    // Part 1
     let first_line = contents.lines().next().unwrap();
     let input = parse_input(first_line);
     let mut iter = input.iter();
     let root = build_graph(&mut iter);
+
+    // Part 1
     let metadata_sum = sum_metadata(&root);
     println!("metadata_sum={}", metadata_sum);
     // Correct result
     assert_eq!(metadata_sum, 42798);
+
+    // Part 2
+    let value_root_node = value_of_node(&root);
+    println!("value_root_node={}", value_root_node);
+    assert_eq!(value_root_node, 23798);
 
     Ok(())
 }
