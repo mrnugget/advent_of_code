@@ -16,27 +16,61 @@ fn parse_input(input: &str) -> (u32, u32) {
     (players, last)
 }
 
+#[derive(Debug)]
+struct Marble {
+    id: usize,
+    value: u32,
+    next: usize,
+    prev: usize,
+}
+
 fn calculate_high_score(num_players: u32, last_marble: u32) -> u32 {
     let mut players: Vec<u32> = (0..num_players).map(|_| 0).collect();
     let mut current_player = 0;
 
-    let mut marbles = vec![0];
-    let mut current_marble_index = 0;
+    let mut marbles = vec![Marble {
+        id: 0,
+        value: 0,
+        next: 0,
+        prev: 0,
+    }];
+    let mut current_marble_id = 0;
 
     for marble in 1..=last_marble {
-        let len = marbles.len();
-
         if marble % 23 == 0 {
-            current_marble_index = (len + current_marble_index - 7) % len;
-            players[current_player] += marble + marbles.remove(current_marble_index);
+            let mut i = 7;
+            while i > 0 {
+                current_marble_id = marbles[current_marble_id].prev;
+                i -= 1;
+            }
+            players[current_player] += marbles[current_marble_id].value;
+            players[current_player] += marble;
+
+            let prev_id = marbles[current_marble_id].prev;
+            let next_id = marbles[current_marble_id].next;
+            marbles[prev_id].next = next_id;
+            marbles[next_id].prev = prev_id;
+            current_marble_id = next_id;
         } else {
-            current_marble_index = (current_marble_index + 2) % len;
-            marbles.insert(current_marble_index, marble);
+            let left_id = marbles[current_marble_id].next;
+            let right_id = marbles[left_id].next;
+
+            let new = Marble {
+                id: marbles.len(),
+                value: marble,
+                prev: left_id,
+                next: right_id,
+            };
+            marbles[left_id].next = new.id;
+            marbles[right_id].prev = new.id;
+            current_marble_id = new.id;
+            marbles.push(new);
         }
 
         current_player = (current_player + 1) % num_players as usize;
     }
 
+    // println!("players={:?}", players);
     *players.iter().max().unwrap()
 }
 
@@ -91,8 +125,9 @@ fn main() -> Result<(), std::io::Error> {
     assert_eq!(high_score, 410375);
 
     // Part 2
-    // let new_high_score = calculate_high_score(players, last_marble_worth * 100);
-    // println!("new_high_score={}", new_high_score);
+    let new_high_score = calculate_high_score(players, last_marble_worth * 100);
+    println!("new_high_score={}", new_high_score);
+    assert_eq!(new_high_score, 3314195047);
 
     Ok(())
 }
