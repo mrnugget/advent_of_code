@@ -40,7 +40,7 @@ where
 fn sum_metadata(n: &Node) -> u32 {
     let mut sum = n.metadata.iter().sum();
 
-    for c in n.children.iter() {
+    for c in &n.children {
         sum += sum_metadata(c);
     }
 
@@ -54,7 +54,7 @@ fn value_of_node(n: &Node) -> u32 {
 
     let mut value: u32 = 0;
 
-    for &meta in n.metadata.iter() {
+    for &meta in &n.metadata {
         let i = meta - 1;
         if let Some(child) = n.children.get(i as usize) {
             value += value_of_node(child);
