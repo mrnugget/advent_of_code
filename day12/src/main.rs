@@ -43,7 +43,7 @@ where
     (initial_state, rules)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct State {
     pots: Vec<char>,
 }
@@ -79,7 +79,7 @@ impl State {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Pattern(char, char, char, char, char);
 
 impl Pattern {
@@ -93,7 +93,7 @@ impl Pattern {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Rule {
     pattern: Pattern,
     result: char,
@@ -280,21 +280,51 @@ fn main() -> Result<(), std::io::Error> {
 
     let (initial_state, rules) = parse_input(contents.lines());
 
+    // Part 1
     let mut game = Game {
         offset: 0,
-        state: initial_state,
-        rules: rules,
+        state: initial_state.clone(),
+        rules: rules.clone(),
     };
     println!("0: {}", game.state.to_string());
     for i in 1..=20 {
         game.evolve();
         println!("{}: {}", i, game.state.to_string());
     }
+    let part_1_sum = game.sum();
+    println!("sum={}", part_1_sum);
+    assert_eq!(part_1_sum, 1623);
 
-    // Part 1
-    let sum_after_tweny_generations = game.sum();
-    println!("sum={}", sum_after_tweny_generations);
-    assert_eq!(sum_after_tweny_generations, 1623);
+    // Part 2
+    let mut game = Game {
+        offset: 0,
+        state: initial_state.clone(),
+        rules: rules.clone(),
+    };
+    let mut current_sum = game.sum();
+    for i in 1..=1000 {
+        game.evolve();
+        let new_sum = game.sum();
+        let diff = new_sum - current_sum;
+        current_sum = new_sum;
+        println!("{}: sum={}, diff={}", i, new_sum, diff);
+
+        // After running this and looking at the output, there emerges a pattern
+        // after 1xx generations. Let's put an assertion on that:
+        //
+        if i == 500 {
+            assert_eq!(current_sum, 16401);
+            assert_eq!(diff, 32);
+        }
+    }
+
+    // Since the sum for the 1000th generation is sum_of_500th_gen + 500*32
+    // we can calculate that the sum for the 50000000000th generation is
+    // sum_of_500th_gen + (50000000000 - 500)*32
+    // 16401 + (50000000000 - 500)*32
+    // -> 1600000000401
+    let part_2_sum = game.sum();
+    println!("sum={}", part_2_sum);
 
     Ok(())
 }
