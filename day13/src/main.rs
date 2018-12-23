@@ -25,11 +25,30 @@ enum TrackElement {
     Intersection,
 }
 
+type Tracks = Vec<Vec<Option<TrackElement>>>;
+
 struct Grid {
     width: usize,
     height: usize,
-    tracks: Vec<Vec<Option<TrackElement>>>,
+    tracks: Tracks,
     carts: Vec<Vec<Option<Cart>>>,
+}
+
+fn interpolate_track_element(tracks: &Tracks, x: usize, y: usize) -> Option<TrackElement> {
+    if tracks[x][y - 1] == Some(TrackElement::Horizontal) {
+        return Some(TrackElement::Horizontal);
+    }
+
+    if let Some(up) = &tracks[x - 1][y] {
+        return match up {
+            TrackElement::Vertical
+            | TrackElement::TopRightToLeftBottom
+            | TrackElement::TopLeftToBottomRight => Some(TrackElement::Vertical),
+            _ => None,
+        };
+    }
+
+    return None;
 }
 
 impl Grid {
@@ -60,18 +79,7 @@ impl Grid {
                     '+' => Some(TrackElement::Intersection),
                     '\\' => Some(TrackElement::TopLeftToBottomRight),
                     '/' => Some(TrackElement::TopRightToLeftBottom),
-                    '>' | '<' | 'v' | '^' => {
-                        if tracks[x][y - 1] == Some(TrackElement::Horizontal) {
-                            Some(TrackElement::Horizontal)
-                        } else if tracks[x - 1][y] == Some(TrackElement::Vertical)
-                            || tracks[x - 1][y] == Some(TrackElement::TopRightToLeftBottom)
-                            || tracks[x - 1][y] == Some(TrackElement::TopLeftToBottomRight)
-                        {
-                            Some(TrackElement::Vertical)
-                        } else {
-                            None
-                        }
-                    }
+                    '>' | '<' | 'v' | '^' => interpolate_track_element(&tracks, x, y),
                     _ => None,
                 };
                 if let Some(element) = track_element {
