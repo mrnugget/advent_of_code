@@ -60,6 +60,18 @@ impl Grid {
                     '+' => Some(TrackElement::Intersection),
                     '\\' => Some(TrackElement::TopLeftToBottomRight),
                     '/' => Some(TrackElement::TopRightToLeftBottom),
+                    '>' | '<' | 'v' | '^' => {
+                        if tracks[x][y - 1] == Some(TrackElement::Horizontal) {
+                            Some(TrackElement::Horizontal)
+                        } else if tracks[x - 1][y] == Some(TrackElement::Vertical)
+                            || tracks[x - 1][y] == Some(TrackElement::TopRightToLeftBottom)
+                            || tracks[x - 1][y] == Some(TrackElement::TopLeftToBottomRight)
+                        {
+                            Some(TrackElement::Vertical)
+                        } else {
+                            None
+                        }
+                    }
                     _ => None,
                 };
                 if let Some(element) = track_element {
@@ -97,9 +109,7 @@ impl Grid {
 mod tests {
     use super::*;
 
-    #[test]
-    fn parsing_input_to_grid() {
-        let input = r#"/->-\
+    const INPUT: &str = r#"/->-\
 |   |  /----\
 | /-+--+-\  |
 | | |  | v  |
@@ -108,14 +118,19 @@ mod tests {
 
 "#;
 
-        let grid = Grid::from_string(String::from(input));
+    #[test]
+    fn determine_width_height() {
+        let grid = Grid::from_string(String::from(INPUT));
         assert_eq!(grid.width, 13);
         assert_eq!(grid.height, 7);
+    }
+
+    #[test]
+    fn parsing_track_elements() {
+        let grid = Grid::from_string(String::from(INPUT));
 
         assert_eq!(grid.tracks[0][0], Some(TrackElement::TopRightToLeftBottom));
         assert_eq!(grid.tracks[0][1], Some(TrackElement::Horizontal));
-        // TODO: interpolate track elements
-        // assert_eq!(grid.tracks[0][2], Some(TrackElement::Horizontal));
         assert_eq!(grid.tracks[0][3], Some(TrackElement::Horizontal));
         assert_eq!(grid.tracks[0][4], Some(TrackElement::TopLeftToBottomRight));
 
@@ -144,6 +159,11 @@ mod tests {
                 Some(TrackElement::Intersection),
             ][..]
         );
+    }
+
+    #[test]
+    fn parsing_cart_positions() {
+        let grid = Grid::from_string(String::from(INPUT));
 
         assert_eq!(
             grid.carts[0][2],
@@ -157,6 +177,15 @@ mod tests {
                 direction: Direction::Down
             })
         );
+    }
+
+    #[test]
+    fn interpolating_track_elements_underneath_carts() {
+        let grid = Grid::from_string(String::from(INPUT));
+
+        assert_eq!(grid.tracks[0][2], Some(TrackElement::Horizontal));
+        println!("{:?}", grid.tracks[2][9]);
+        assert_eq!(grid.tracks[3][9], Some(TrackElement::Vertical));
     }
 }
 
