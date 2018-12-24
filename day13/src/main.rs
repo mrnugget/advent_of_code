@@ -68,6 +68,10 @@ fn interpolate_track_element(tracks: &Tracks, x: usize, y: usize) -> Option<Trac
         return Some(TrackElement::Horizontal);
     }
 
+    if tracks[x][y - 1] == Some(TrackElement::Intersection) {
+        return Some(TrackElement::Horizontal);
+    }
+
     if let Some(up) = &tracks[x - 1][y] {
         return match up {
             TrackElement::Vertical
@@ -142,6 +146,9 @@ impl Grid {
     }
 
     fn move_carts(&mut self) -> Result<(), (usize, usize)> {
+        use self::Direction::*;
+        use self::TrackElement::*;
+
         let mut new_carts = self.carts.clone();
         for x in 0..self.height {
             for y in 0..self.width {
@@ -149,10 +156,10 @@ impl Grid {
                     let direction = cart.direction.clone();
 
                     let (new_x, new_y) = match direction {
-                        Direction::Up => (x - 1, y),
-                        Direction::Down => (x + 1, y),
-                        Direction::Left => (x, y - 1),
-                        Direction::Right => (x, y + 1),
+                        Up => (x - 1, y),
+                        Down => (x + 1, y),
+                        Left => (x, y - 1),
+                        Right => (x, y + 1),
                     };
 
                     if new_carts[new_x][new_y].is_some() {
@@ -162,33 +169,33 @@ impl Grid {
                     let intersection_direction = cart.intersection_direction.clone();
 
                     let new_direction = match self.tracks[new_x][new_y] {
-                        Some(TrackElement::Horizontal) => direction,
-                        Some(TrackElement::Vertical) => direction,
-                        Some(TrackElement::TopRightToLeftBottom) => match direction {
-                            Direction::Up => Direction::Right,
-                            Direction::Down => Direction::Left,
-                            Direction::Right => Direction::Up,
-                            Direction::Left => Direction::Down,
+                        Some(Horizontal) => direction,
+                        Some(Vertical) => direction,
+                        Some(TopRightToLeftBottom) => match direction {
+                            Up => Right,
+                            Down => Left,
+                            Right => Up,
+                            Left => Down,
                         },
-                        Some(TrackElement::TopLeftToBottomRight) => match direction {
-                            Direction::Up => Direction::Left,
-                            Direction::Down => Direction::Right,
-                            Direction::Left => Direction::Up,
-                            Direction::Right => Direction::Down,
+                        Some(TopLeftToBottomRight) => match direction {
+                            Up => Left,
+                            Down => Right,
+                            Left => Up,
+                            Right => Down,
                         },
-                        Some(TrackElement::Intersection) => match intersection_direction {
+                        Some(Intersection) => match intersection_direction {
                             IntersectionDirection::Straight => direction,
                             IntersectionDirection::Left => match direction {
-                                Direction::Up => Direction::Left,
-                                Direction::Down => Direction::Right,
-                                Direction::Left => Direction::Down,
-                                Direction::Right => Direction::Up,
+                                Up => Left,
+                                Down => Right,
+                                Left => Down,
+                                Right => Up,
                             },
                             IntersectionDirection::Right => match direction {
-                                Direction::Up => Direction::Right,
-                                Direction::Down => Direction::Left,
-                                Direction::Left => Direction::Up,
-                                Direction::Right => Direction::Down,
+                                Up => Right,
+                                Down => Left,
+                                Left => Up,
+                                Right => Down,
                             },
                         },
                         None => panic!(
@@ -198,24 +205,17 @@ impl Grid {
                     };
 
                     let new_intersection_direction = match self.tracks[new_x][new_y] {
-                        Some(TrackElement::Horizontal) => intersection_direction,
-                        Some(TrackElement::Vertical) => intersection_direction,
-                        Some(TrackElement::TopRightToLeftBottom) => intersection_direction,
-                        Some(TrackElement::TopLeftToBottomRight) => intersection_direction,
-                        Some(TrackElement::Intersection) => match intersection_direction {
+                        Some(Horizontal) => intersection_direction,
+                        Some(Vertical) => intersection_direction,
+                        Some(TopRightToLeftBottom) => intersection_direction,
+                        Some(TopLeftToBottomRight) => intersection_direction,
+                        Some(Intersection) => match intersection_direction {
                             IntersectionDirection::Left => IntersectionDirection::Straight,
                             IntersectionDirection::Straight => IntersectionDirection::Right,
                             IntersectionDirection::Right => IntersectionDirection::Left,
                         },
                         None => panic!("Cart ran off track"),
                     };
-
-                    if new_intersection_direction.clone() != cart.intersection_direction {
-                        println!(
-                            "cart at {},{} transitioning from {} to {}",
-                            new_x, new_y, cart.intersection_direction, new_intersection_direction
-                        );
-                    }
 
                     new_carts[x][y] = None;
                     new_carts[new_x][new_y].replace(Cart {
@@ -232,7 +232,7 @@ impl Grid {
 
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for x in 0..30 {
+        for x in 15..35 {
             write!(f, "[{}]\t", x)?;
             for y in 0..self.width {
                 if let Some(cart) = &self.carts[x][y] {
@@ -397,9 +397,10 @@ fn main() -> Result<(), std::io::Error> {
     loop {
         if let Err((x, y)) = grid.move_carts() {
             println!("crash at {},{}", x, y);
+            // Part1 solution
+            assert_eq!((x, y), (32, 99));
             break;
         }
-        println!("{}", grid);
     }
 
     Ok(())
