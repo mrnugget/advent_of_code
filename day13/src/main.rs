@@ -21,10 +21,12 @@ enum IntersectionDirection {
 
 impl fmt::Display for IntersectionDirection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::IntersectionDirection::*;
+
         let output = match self {
-            IntersectionDirection::Left => "LEFT",
-            IntersectionDirection::Straight => "STRAIGHT",
-            IntersectionDirection::Right => "RIGHT",
+            Left => "LEFT",
+            Straight => "STRAIGHT",
+            Right => "RIGHT",
         };
         return write!(f, "{}", output);
     }
@@ -55,12 +57,14 @@ enum TrackElement {
 }
 
 type Tracks = Vec<Vec<Option<TrackElement>>>;
+type Carts = Vec<Vec<Option<Cart>>>;
 
 struct Grid {
     width: usize,
     height: usize,
     tracks: Tracks,
-    carts: Vec<Vec<Option<Cart>>>,
+    carts: Carts,
+    num_carts: u32,
 }
 
 fn interpolate_track_element(tracks: &Tracks, x: usize, y: usize) -> Option<TrackElement> {
@@ -72,11 +76,19 @@ fn interpolate_track_element(tracks: &Tracks, x: usize, y: usize) -> Option<Trac
         return Some(TrackElement::Horizontal);
     }
 
+    if tracks[x][y - 1] == Some(TrackElement::TopLeftToBottomRight) {
+        return Some(TrackElement::Horizontal);
+    }
+    if tracks[x][y - 1] == Some(TrackElement::TopRightToLeftBottom) {
+        return Some(TrackElement::Horizontal);
+    }
+
     if let Some(up) = &tracks[x - 1][y] {
         return match up {
             TrackElement::Vertical
             | TrackElement::TopRightToLeftBottom
-            | TrackElement::TopLeftToBottomRight => Some(TrackElement::Vertical),
+            | TrackElement::TopLeftToBottomRight
+            | TrackElement::Intersection => Some(TrackElement::Vertical),
             _ => None,
         };
     }
@@ -101,6 +113,7 @@ impl Grid {
         let mut tracks = vec![vec![None; width]; height];
         let mut carts = vec![vec![None; width]; height];
 
+        let mut num_carts = 0;
         let mut x = 0;
         let mut y = 0;
 
@@ -128,6 +141,7 @@ impl Grid {
                 };
                 if let Some(direction) = cart_direction {
                     carts[x][y].replace(Cart::new(direction));
+                    num_carts += 1;
                 }
 
                 y += 1;
@@ -142,17 +156,18 @@ impl Grid {
             height,
             tracks,
             carts,
+            num_carts,
         }
     }
 
-    fn move_carts(&mut self) -> Result<(), (usize, usize)> {
+    fn move_carts(&mut self, stop_on_crash: bool) -> Result<(), (usize, usize)> {
         use self::Direction::*;
         use self::TrackElement::*;
 
         let mut new_carts = self.carts.clone();
         for x in 0..self.height {
             for y in 0..self.width {
-                if let Some(cart) = &self.carts[x][y] {
+                if let Some(cart) = &mut self.carts[x][y] {
                     let direction = cart.direction.clone();
 
                     let (new_x, new_y) = match direction {
@@ -163,7 +178,15 @@ impl Grid {
                     };
 
                     if new_carts[new_x][new_y].is_some() {
-                        return Err((new_y, new_x));
+                        new_carts[x][y] = None;
+                        new_carts[new_x][new_y] = None;
+                        self.carts[new_x][new_y] = None;
+                        self.num_carts -= 2;
+                        if stop_on_crash {
+                            return Err((new_y, new_x));
+                        } else {
+                            continue;
+                        }
                     }
 
                     let intersection_direction = cart.intersection_direction.clone();
@@ -225,8 +248,23 @@ impl Grid {
                 }
             }
         }
+
         self.carts = new_carts;
         Ok(())
+    }
+
+    fn cart_positions(&self) -> Vec<(usize, usize)> {
+        let mut positions = Vec::new();
+
+        for x in 0..self.height {
+            for y in 0..self.width {
+                if let Some(_) = &self.carts[x][y] {
+                    positions.push((x, y));
+                }
+            }
+        }
+
+        positions
     }
 }
 
@@ -354,7 +392,7 @@ mod tests {
         assert_eq!(grid.carts[0][2], Some(Cart::new(Direction::Right)));
         assert_eq!(grid.carts[3][9], Some(Cart::new(Direction::Down)));
 
-        assert!(grid.move_carts().is_ok());
+        assert!(grid.move_carts(true).is_ok());
 
         //    /-->\
         //    |   |  /----\
@@ -373,10 +411,35 @@ mod tests {
         );
 
         for _ in 0..12 {
-            assert!(grid.move_carts().is_ok());
+            assert!(grid.move_carts(true).is_ok());
         }
 
-        assert_eq!(grid.move_carts(), Err((7, 3)));
+        assert_eq!(grid.move_carts(true), Err((7, 3)));
+    }
+
+    #[test]
+    fn moving_carts_until_one_is_left() {
+        let crash_input = r#"/>-<\  
+|   |  
+| /<+-\
+| | | v
+\>+</ |
+  |   ^
+  \<->/"#;
+
+        let mut grid = Grid::from_string(String::from(crash_input));
+
+        loop {
+            let result = grid.move_carts(false);
+            assert!(result.is_ok());
+            if grid.num_carts == 1 {
+                break;
+            }
+        }
+
+        let cart_positions = grid.cart_positions();
+        assert_eq!(cart_positions.len(), 1);
+        assert_eq!(cart_positions.first(), Some(&(4, 6)));
     }
 }
 
@@ -393,14 +456,30 @@ fn main() -> Result<(), std::io::Error> {
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    let mut grid = Grid::from_string(contents);
+    // Part 1
+    let mut part_1_grid = Grid::from_string(contents.clone());
     loop {
-        if let Err((x, y)) = grid.move_carts() {
-            println!("crash at {},{}", x, y);
-            // Part1 solution
+        if let Err((x, y)) = part_1_grid.move_carts(true) {
+            println!("Part 1 - first crash at {},{}", x, y);
             assert_eq!((x, y), (32, 99));
             break;
         }
+    }
+
+    // Part 2
+    let mut part_2_grid = Grid::from_string(contents.clone());
+    loop {
+        if let Err((x, y)) = part_2_grid.move_carts(false) {
+            println!("Part 2 - unexpected crash at {},{}", x, y);
+            break;
+        }
+        if part_2_grid.num_carts == 1 {
+            break;
+        }
+    }
+    assert_eq!(part_2_grid.cart_positions().len(), 1);
+    if let Some((y, x)) = part_2_grid.cart_positions().first() {
+        println!("Part 2 - last cart at {},{}", x, y);
     }
 
     Ok(())
