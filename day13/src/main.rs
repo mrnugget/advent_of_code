@@ -1,4 +1,5 @@
 use std::env;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process;
@@ -12,8 +13,36 @@ enum Direction {
 }
 
 #[derive(PartialEq, Debug, Clone)]
+enum IntersectionDirection {
+    Left,
+    Straight,
+    Right,
+}
+
+impl fmt::Display for IntersectionDirection {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let output = match self {
+            IntersectionDirection::Left => "LEFT",
+            IntersectionDirection::Straight => "STRAIGHT",
+            IntersectionDirection::Right => "RIGHT",
+        };
+        return write!(f, "{}", output);
+    }
+}
+
+#[derive(PartialEq, Debug, Clone)]
 struct Cart {
     direction: Direction,
+    intersection_direction: IntersectionDirection,
+}
+
+impl Cart {
+    fn new(direction: Direction) -> Cart {
+        Cart {
+            direction,
+            intersection_direction: IntersectionDirection::Left,
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -94,7 +123,7 @@ impl Grid {
                     _ => None,
                 };
                 if let Some(direction) = cart_direction {
-                    carts[x][y].replace(Cart { direction });
+                    carts[x][y].replace(Cart::new(direction));
                 }
 
                 y += 1;
@@ -110,6 +139,127 @@ impl Grid {
             tracks,
             carts,
         }
+    }
+
+    fn move_carts(&mut self) -> Result<(), (usize, usize)> {
+        let mut new_carts = self.carts.clone();
+        for x in 0..self.height {
+            for y in 0..self.width {
+                if let Some(cart) = &self.carts[x][y] {
+                    let direction = cart.direction.clone();
+
+                    let (new_x, new_y) = match direction {
+                        Direction::Up => (x - 1, y),
+                        Direction::Down => (x + 1, y),
+                        Direction::Left => (x, y - 1),
+                        Direction::Right => (x, y + 1),
+                    };
+
+                    if new_carts[new_x][new_y].is_some() {
+                        return Err((new_y, new_x));
+                    }
+
+                    let intersection_direction = cart.intersection_direction.clone();
+
+                    let new_direction = match self.tracks[new_x][new_y] {
+                        Some(TrackElement::Horizontal) => direction,
+                        Some(TrackElement::Vertical) => direction,
+                        Some(TrackElement::TopRightToLeftBottom) => match direction {
+                            Direction::Up => Direction::Right,
+                            Direction::Down => Direction::Left,
+                            Direction::Right => Direction::Up,
+                            Direction::Left => Direction::Down,
+                        },
+                        Some(TrackElement::TopLeftToBottomRight) => match direction {
+                            Direction::Up => Direction::Left,
+                            Direction::Down => Direction::Right,
+                            Direction::Left => Direction::Up,
+                            Direction::Right => Direction::Down,
+                        },
+                        Some(TrackElement::Intersection) => match intersection_direction {
+                            IntersectionDirection::Straight => direction,
+                            IntersectionDirection::Left => match direction {
+                                Direction::Up => Direction::Left,
+                                Direction::Down => Direction::Right,
+                                Direction::Left => Direction::Down,
+                                Direction::Right => Direction::Up,
+                            },
+                            IntersectionDirection::Right => match direction {
+                                Direction::Up => Direction::Right,
+                                Direction::Down => Direction::Left,
+                                Direction::Left => Direction::Up,
+                                Direction::Right => Direction::Down,
+                            },
+                        },
+                        None => panic!(
+                            "Cart runs off track at {},{} (origin: {}, {})",
+                            new_x, new_y, x, y
+                        ),
+                    };
+
+                    let new_intersection_direction = match self.tracks[new_x][new_y] {
+                        Some(TrackElement::Horizontal) => intersection_direction,
+                        Some(TrackElement::Vertical) => intersection_direction,
+                        Some(TrackElement::TopRightToLeftBottom) => intersection_direction,
+                        Some(TrackElement::TopLeftToBottomRight) => intersection_direction,
+                        Some(TrackElement::Intersection) => match intersection_direction {
+                            IntersectionDirection::Left => IntersectionDirection::Straight,
+                            IntersectionDirection::Straight => IntersectionDirection::Right,
+                            IntersectionDirection::Right => IntersectionDirection::Left,
+                        },
+                        None => panic!("Cart ran off track"),
+                    };
+
+                    if new_intersection_direction.clone() != cart.intersection_direction {
+                        println!(
+                            "cart at {},{} transitioning from {} to {}",
+                            new_x, new_y, cart.intersection_direction, new_intersection_direction
+                        );
+                    }
+
+                    new_carts[x][y] = None;
+                    new_carts[new_x][new_y].replace(Cart {
+                        direction: new_direction,
+                        intersection_direction: new_intersection_direction,
+                    });
+                }
+            }
+        }
+        self.carts = new_carts;
+        Ok(())
+    }
+}
+
+impl fmt::Display for Grid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for x in 0..30 {
+            write!(f, "[{}]\t", x)?;
+            for y in 0..self.width {
+                if let Some(cart) = &self.carts[x][y] {
+                    let car_format = match cart.direction {
+                        Direction::Up => "^",
+                        Direction::Down => "v",
+                        Direction::Left => "<",
+                        Direction::Right => ">",
+                    };
+                    write!(f, "{}", car_format)?;
+                } else if let Some(track) = &self.tracks[x][y] {
+                    let track_format = match track {
+                        TrackElement::Horizontal => "-",
+                        TrackElement::Vertical => "|",
+                        TrackElement::TopRightToLeftBottom => "/",
+                        TrackElement::TopLeftToBottomRight => "\\",
+                        TrackElement::Intersection => "+",
+                    };
+                    write!(f, "{}", track_format)?;
+                } else {
+                    write!(f, "{}", " ")?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -173,18 +323,13 @@ mod tests {
     fn parsing_cart_positions() {
         let grid = Grid::from_string(String::from(INPUT));
 
-        assert_eq!(
-            grid.carts[0][2],
-            Some(Cart {
-                direction: Direction::Right
-            })
-        );
-        assert_eq!(
-            grid.carts[3][9],
-            Some(Cart {
-                direction: Direction::Down
-            })
-        );
+        assert_eq!(grid.carts[0][2], Some(Cart::new(Direction::Right)));
+        assert!(grid.carts[1][..].iter().all(|c| c.is_none()));
+        assert!(grid.carts[2][..].iter().all(|c| c.is_none()));
+        assert_eq!(grid.carts[3][9], Some(Cart::new(Direction::Down)));
+        assert!(grid.carts[4][..].iter().all(|c| c.is_none()));
+        assert!(grid.carts[5][..].iter().all(|c| c.is_none()));
+        assert!(grid.carts[6][..].iter().all(|c| c.is_none()));
     }
 
     #[test]
@@ -192,8 +337,46 @@ mod tests {
         let grid = Grid::from_string(String::from(INPUT));
 
         assert_eq!(grid.tracks[0][2], Some(TrackElement::Horizontal));
-        println!("{:?}", grid.tracks[2][9]);
         assert_eq!(grid.tracks[3][9], Some(TrackElement::Vertical));
+    }
+
+    #[test]
+    fn moving_carts_on_grid() {
+        let mut grid = Grid::from_string(String::from(INPUT));
+
+        //    /->-\
+        //    |   |  /----\
+        //    | /-+--+-\  |
+        //    | | |  | v  |
+        //    \-+-/  \-+--/
+        //      \------/
+
+        assert_eq!(grid.carts[0][2], Some(Cart::new(Direction::Right)));
+        assert_eq!(grid.carts[3][9], Some(Cart::new(Direction::Down)));
+
+        assert!(grid.move_carts().is_ok());
+
+        //    /-->\
+        //    |   |  /----\
+        //    | /-+--+-\  |
+        //    | | |  | |  |
+        //    \-+-/  \->--/
+        //      \------/
+        assert_eq!(grid.carts[0][3], Some(Cart::new(Direction::Right)));
+        assert_eq!(
+            grid.carts[4][9].clone().unwrap().direction,
+            Direction::Right
+        );
+        assert_eq!(
+            grid.carts[4][9].clone().unwrap().intersection_direction,
+            IntersectionDirection::Straight
+        );
+
+        for _ in 0..12 {
+            assert!(grid.move_carts().is_ok());
+        }
+
+        assert_eq!(grid.move_carts(), Err((7, 3)));
     }
 }
 
@@ -210,9 +393,14 @@ fn main() -> Result<(), std::io::Error> {
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    let grid = Grid::from_string(contents);
-    println!("grid.height={}, grid.width={}", grid.height, grid.width);
-    println!("grid.carts={:?}, grid.tracks={:?}", grid.carts, grid.tracks);
+    let mut grid = Grid::from_string(contents);
+    loop {
+        if let Err((x, y)) = grid.move_carts() {
+            println!("crash at {},{}", x, y);
+            break;
+        }
+        println!("{}", grid);
+    }
 
     Ok(())
 }
