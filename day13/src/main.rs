@@ -47,6 +47,18 @@ impl Cart {
     }
 }
 
+impl fmt::Display for Cart {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let car_format = match self.direction {
+            Direction::Up => "^",
+            Direction::Down => "v",
+            Direction::Left => "<",
+            Direction::Right => ">",
+        };
+        write!(f, "{}", car_format)
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 enum TrackElement {
     Horizontal,
@@ -54,6 +66,19 @@ enum TrackElement {
     TopLeftToBottomRight,
     TopRightToLeftBottom,
     Intersection,
+}
+
+impl fmt::Display for TrackElement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let track_format = match self {
+            TrackElement::Horizontal => "-",
+            TrackElement::Vertical => "|",
+            TrackElement::TopRightToLeftBottom => "/",
+            TrackElement::TopLeftToBottomRight => "\\",
+            TrackElement::Intersection => "+",
+        };
+        write!(f, "{}", track_format)
+    }
 }
 
 type Tracks = Vec<Vec<Option<TrackElement>>>;
@@ -270,30 +295,23 @@ impl Grid {
 
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for x in 15..35 {
+        for x in 0..self.height {
             write!(f, "[{}]\t", x)?;
+
             for y in 0..self.width {
                 if let Some(cart) = &self.carts[x][y] {
-                    let car_format = match cart.direction {
-                        Direction::Up => "^",
-                        Direction::Down => "v",
-                        Direction::Left => "<",
-                        Direction::Right => ">",
-                    };
-                    write!(f, "{}", car_format)?;
-                } else if let Some(track) = &self.tracks[x][y] {
-                    let track_format = match track {
-                        TrackElement::Horizontal => "-",
-                        TrackElement::Vertical => "|",
-                        TrackElement::TopRightToLeftBottom => "/",
-                        TrackElement::TopLeftToBottomRight => "\\",
-                        TrackElement::Intersection => "+",
-                    };
-                    write!(f, "{}", track_format)?;
-                } else {
-                    write!(f, "{}", " ")?;
-                }
+                    write!(f, "{}", cart)?;
+                    continue;
+                };
+
+                if let Some(track) = &self.tracks[x][y] {
+                    write!(f, "{}", track)?;
+                    continue;
+                };
+
+                write!(f, "{}", " ")?;
             }
+
             write!(f, "\n")?;
         }
 
