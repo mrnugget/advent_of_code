@@ -12,6 +12,18 @@ enum Direction {
     Left,
 }
 
+impl Direction {
+    fn from_char(c: char) -> Option<Direction> {
+        match c {
+            '>' => Some(Direction::Right),
+            '<' => Some(Direction::Left),
+            'v' => Some(Direction::Down),
+            '^' => Some(Direction::Up),
+            _ => None,
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 enum IntersectionDirection {
     Left,
@@ -43,6 +55,44 @@ impl Cart {
         Cart {
             direction,
             intersection_direction: IntersectionDirection::Left,
+        }
+    }
+
+    fn direction_on(&self, track: Option<TrackElement>) -> Option<Direction> {
+        use self::Direction::*;
+        use self::TrackElement::*;
+
+        match track {
+            Some(Horizontal) => Some(self.direction.clone()),
+            Some(Vertical) => Some(self.direction.clone()),
+            Some(TopRightToLeftBottom) => match self.direction {
+                Up => Some(Right),
+                Down => Some(Left),
+                Right => Some(Up),
+                Left => Some(Down),
+            },
+            Some(TopLeftToBottomRight) => match self.direction {
+                Up => Some(Left),
+                Down => Some(Right),
+                Left => Some(Up),
+                Right => Some(Down),
+            },
+            Some(Intersection) => match self.intersection_direction {
+                IntersectionDirection::Straight => Some(self.direction.clone()),
+                IntersectionDirection::Left => match self.direction {
+                    Up => Some(Left),
+                    Down => Some(Right),
+                    Left => Some(Down),
+                    Right => Some(Up),
+                },
+                IntersectionDirection::Right => match self.direction {
+                    Up => Some(Right),
+                    Down => Some(Left),
+                    Left => Some(Up),
+                    Right => Some(Down),
+                },
+            },
+            _ => None,
         }
     }
 }
@@ -157,14 +207,7 @@ impl Grid {
                     tracks[x][y].replace(element);
                 }
 
-                let cart_direction = match c {
-                    '>' => Some(Direction::Right),
-                    '<' => Some(Direction::Left),
-                    'v' => Some(Direction::Down),
-                    '^' => Some(Direction::Up),
-                    _ => None,
-                };
-                if let Some(direction) = cart_direction {
+                if let Some(direction) = Direction::from_char(c) {
                     carts[x][y].replace(Cart::new(direction));
                     num_carts += 1;
                 }
@@ -216,41 +259,13 @@ impl Grid {
 
                     let intersection_direction = cart.intersection_direction.clone();
 
-                    let new_direction = match self.tracks[new_x][new_y] {
-                        Some(Horizontal) => direction,
-                        Some(Vertical) => direction,
-                        Some(TopRightToLeftBottom) => match direction {
-                            Up => Right,
-                            Down => Left,
-                            Right => Up,
-                            Left => Down,
-                        },
-                        Some(TopLeftToBottomRight) => match direction {
-                            Up => Left,
-                            Down => Right,
-                            Left => Up,
-                            Right => Down,
-                        },
-                        Some(Intersection) => match intersection_direction {
-                            IntersectionDirection::Straight => direction,
-                            IntersectionDirection::Left => match direction {
-                                Up => Left,
-                                Down => Right,
-                                Left => Down,
-                                Right => Up,
-                            },
-                            IntersectionDirection::Right => match direction {
-                                Up => Right,
-                                Down => Left,
-                                Left => Up,
-                                Right => Down,
-                            },
-                        },
-                        None => panic!(
+                    let new_direction = cart.direction_on(self.tracks[new_x][new_y].clone());
+                    if new_direction.is_none() {
+                        panic!(
                             "Cart runs off track at {},{} (origin: {}, {})",
                             new_x, new_y, x, y
-                        ),
-                    };
+                        );
+                    }
 
                     let new_intersection_direction = match self.tracks[new_x][new_y] {
                         Some(Horizontal) => intersection_direction,
@@ -267,7 +282,7 @@ impl Grid {
 
                     new_carts[x][y] = None;
                     new_carts[new_x][new_y].replace(Cart {
-                        direction: new_direction,
+                        direction: new_direction.unwrap(),
                         intersection_direction: new_intersection_direction,
                     });
                 }
