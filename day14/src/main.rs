@@ -34,8 +34,8 @@ fn calculate_recipes(input: Vec<i32>, warmup_num: usize, num: usize) -> Vec<i32>
             recipes.push(d);
         }
 
-        index_1 = ((index_1 as i32 + recipes[index_1] + 1) % recipes.len() as i32) as usize;
-        index_2 = ((index_2 as i32 + recipes[index_2] + 1) % recipes.len() as i32) as usize;
+        index_1 = (index_1 + recipes[index_1] as usize + 1) % recipes.len();
+        index_2 = (index_2 + recipes[index_2] as usize + 1) % recipes.len();
     }
 
     result
@@ -65,8 +65,8 @@ fn first_occurrence(input: Vec<i32>, pattern: Vec<i32>) -> usize {
             }
         }
 
-        index_1 = ((index_1 as i32 + recipes[index_1] + 1) % recipes.len() as i32) as usize;
-        index_2 = ((index_2 as i32 + recipes[index_2] + 1) % recipes.len() as i32) as usize;
+        index_1 = (index_1 + recipes[index_1] as usize + 1) % recipes.len();
+        index_2 = (index_2 + recipes[index_2] as usize + 1) % recipes.len();
     }
 }
 
