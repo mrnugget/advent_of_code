@@ -95,6 +95,26 @@ impl Cart {
             _ => None,
         }
     }
+
+    fn intersection_direction_on(
+        &self,
+        track: Option<TrackElement>,
+    ) -> Option<IntersectionDirection> {
+        use self::TrackElement::*;
+
+        match track {
+            Some(Horizontal) => Some(self.intersection_direction.clone()),
+            Some(Vertical) => Some(self.intersection_direction.clone()),
+            Some(TopRightToLeftBottom) => Some(self.intersection_direction.clone()),
+            Some(TopLeftToBottomRight) => Some(self.intersection_direction.clone()),
+            Some(Intersection) => match self.intersection_direction {
+                IntersectionDirection::Left => Some(IntersectionDirection::Straight),
+                IntersectionDirection::Straight => Some(IntersectionDirection::Right),
+                IntersectionDirection::Right => Some(IntersectionDirection::Left),
+            },
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Cart {
@@ -230,15 +250,12 @@ impl Grid {
 
     fn move_carts(&mut self, stop_on_crash: bool) -> Result<(), (usize, usize)> {
         use self::Direction::*;
-        use self::TrackElement::*;
 
         let mut new_carts = self.carts.clone();
         for x in 0..self.height {
             for y in 0..self.width {
                 if let Some(cart) = &mut self.carts[x][y] {
-                    let direction = cart.direction.clone();
-
-                    let (new_x, new_y) = match direction {
+                    let (new_x, new_y) = match cart.direction {
                         Up => (x - 1, y),
                         Down => (x + 1, y),
                         Left => (x, y - 1),
@@ -248,16 +265,16 @@ impl Grid {
                     if new_carts[new_x][new_y].is_some() {
                         new_carts[x][y] = None;
                         new_carts[new_x][new_y] = None;
+
                         self.carts[new_x][new_y] = None;
                         self.num_carts -= 2;
+
                         if stop_on_crash {
                             return Err((new_y, new_x));
                         } else {
                             continue;
                         }
                     }
-
-                    let intersection_direction = cart.intersection_direction.clone();
 
                     let new_direction = cart.direction_on(self.tracks[new_x][new_y].clone());
                     if new_direction.is_none() {
@@ -267,23 +284,16 @@ impl Grid {
                         );
                     }
 
-                    let new_intersection_direction = match self.tracks[new_x][new_y] {
-                        Some(Horizontal) => intersection_direction,
-                        Some(Vertical) => intersection_direction,
-                        Some(TopRightToLeftBottom) => intersection_direction,
-                        Some(TopLeftToBottomRight) => intersection_direction,
-                        Some(Intersection) => match intersection_direction {
-                            IntersectionDirection::Left => IntersectionDirection::Straight,
-                            IntersectionDirection::Straight => IntersectionDirection::Right,
-                            IntersectionDirection::Right => IntersectionDirection::Left,
-                        },
-                        None => panic!("Cart ran off track"),
+                    let intersection_direction =
+                        cart.intersection_direction_on(self.tracks[new_x][new_y].clone());
+                    if intersection_direction.is_none() {
+                        panic!("Cart ran off track");
                     };
 
                     new_carts[x][y] = None;
                     new_carts[new_x][new_y].replace(Cart {
                         direction: new_direction.unwrap(),
-                        intersection_direction: new_intersection_direction,
+                        intersection_direction: intersection_direction.unwrap(),
                     });
                 }
             }
