@@ -255,8 +255,7 @@ const PART_1_INPUT: &'static [&str] = &[
 
 fn character_frequencies(word: &str) -> HashMap<char, u32> {
     word.chars().fold(HashMap::new(), |mut acc, c| {
-        let frequency = acc.entry(c).or_insert(0);
-        *frequency += 1;
+        *acc.entry(c).or_default() += 1;
         acc
     })
 }
