@@ -254,31 +254,29 @@ const PART_1_INPUT: &'static [&str] = &[
 ];
 
 fn character_frequencies(word: &str) -> HashMap<char, u32> {
-    let mut frequencies = HashMap::new();
-
-    for (_, c) in word.chars().enumerate() {
-        let frequency = frequencies.entry(c).or_insert(0);
+    word.chars().fold(HashMap::new(), |mut acc, c| {
+        let frequency = acc.entry(c).or_insert(0);
         *frequency += 1;
-    }
-
-    frequencies
+        acc
+    })
 }
 
 fn count_two_and_three_char_frequencies(words: &[&str]) -> (u32, u32) {
     let mut exactly_two = 0;
     let mut exactly_three = 0;
 
-    for (_, item) in words.iter().enumerate() {
-        let mut frequencies = character_frequencies(item);
+    words
+        .iter()
+        .map(|word| character_frequencies(word))
+        .for_each(|frequencies| {
+            if frequencies.values().any(|&x| x == 2) {
+                exactly_two += 1;
+            }
 
-        if frequencies.values().any(|&x| x == 2) {
-            exactly_two += 1;
-        }
-
-        if frequencies.values().any(|&x| x == 3) {
-            exactly_three += 1;
-        }
-    }
+            if frequencies.values().any(|&x| x == 3) {
+                exactly_three += 1;
+            }
+        });
 
     (exactly_two, exactly_three)
 }
@@ -299,8 +297,8 @@ fn count_different_chars(a: &str, b: &str) -> u32 {
 }
 
 fn differ_by<'a>(words: &[&'a str], num: u32) -> Option<(&'a str, &'a str)> {
-    for (_, a) in words.iter().enumerate() {
-        for (_, b) in words.iter().enumerate() {
+    for a in words {
+        for b in words {
             if count_different_chars(a, b) == num {
                 return Some((a, b));
             }
