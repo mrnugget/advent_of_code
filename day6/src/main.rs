@@ -27,7 +27,8 @@ impl Grid {
     fn new(coords: Vec<Coord>) -> Grid {
         let mut width = 0;
         let mut height = 0;
-        for c in coords.iter() {
+
+        for c in &coords {
             if c.x > width {
                 width = c.x;
             }
