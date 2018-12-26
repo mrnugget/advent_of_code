@@ -24,27 +24,16 @@ where
     let num_children = input.next().unwrap();
     let num_metadata = input.next().unwrap();
 
-    let mut children: Vec<Node> = Vec::new();
-    for _ in 0..*num_children {
-        children.push(build_graph(input));
-    }
-
-    let mut metadata: Vec<u32> = Vec::new();
-    for _ in 0..*num_metadata {
-        metadata.push(*input.next().unwrap());
-    }
+    let children: Vec<Node> = (0..*num_children).map(|_| build_graph(input)).collect();
+    let metadata: Vec<u32> = (0..*num_metadata).map(|_| *input.next().unwrap()).collect();
 
     Node { children, metadata }
 }
 
 fn sum_metadata(n: &Node) -> u32 {
-    let mut sum = n.metadata.iter().sum();
-
-    for c in &n.children {
-        sum += sum_metadata(c);
-    }
-
-    sum
+    n.children
+        .iter()
+        .fold(n.metadata.iter().sum(), |sum, c| sum + sum_metadata(c))
 }
 
 fn value_of_node(n: &Node) -> u32 {
@@ -52,16 +41,12 @@ fn value_of_node(n: &Node) -> u32 {
         return n.metadata.iter().sum();
     }
 
-    let mut value: u32 = 0;
-
-    for &meta in &n.metadata {
-        let i = meta - 1;
-        if let Some(child) = n.children.get(i as usize) {
-            value += value_of_node(child);
-        }
-    }
-
-    value
+    n.metadata
+        .iter()
+        .map(|m| n.children.get((m - 1) as usize))
+        .filter(|child| child.is_some())
+        .map(|child| value_of_node(child.unwrap()))
+        .sum()
 }
 
 #[cfg(test)]
