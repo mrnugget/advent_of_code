@@ -24,26 +24,24 @@ impl Claim {
         let re = Regex::new(r"#(\d+)\s@\s(\d+),(\d+):\s(\d+)x(\d+)").unwrap();
         let caps = re.captures(claim_def).unwrap();
 
-        let id = caps.get(1).unwrap().as_str().parse::<u32>().unwrap();
-        let start_column = caps.get(2).unwrap().as_str().parse::<u32>().unwrap();
-        let start_row = caps.get(3).unwrap().as_str().parse::<u32>().unwrap();
-        let width = caps.get(4).unwrap().as_str().parse::<u32>().unwrap();
-        let height = caps.get(5).unwrap().as_str().parse::<u32>().unwrap();
+        let results: Vec<u32> = (1..=5)
+            .map(|i| caps.get(i).unwrap())
+            .map(|r| r.as_str().parse::<u32>().unwrap())
+            .collect();
 
         Claim {
-            id: id,
-            start_row: start_row,
-            start_column: start_column,
-            width: width,
-            height: height,
+            id: results[0],
+            start_row: results[2],
+            start_column: results[1],
+            width: results[3],
+            height: results[4],
         }
     }
 
     pub fn draw_on(&self, canvas: &mut Canvas) {
         for row in self.start_row..(self.start_row + self.height) {
             for col in self.start_column..(self.start_column + self.width) {
-                let cell = canvas.entry((row, col)).or_insert(0);
-                *cell += 1;
+                *canvas.entry((row, col)).or_default() += 1;
             }
         }
     }
